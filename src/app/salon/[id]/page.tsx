@@ -1,4 +1,4 @@
-import { horario3A } from "@/lib/horarios";
+import { horarios } from "@/lib/horarios";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,25 @@ export default async function SalonPage({
   const { id } = await params;
   const sp = searchParams ? await searchParams : {};
 
+  const horarioSalon =
+    horarios[id.toUpperCase() as keyof typeof horarios];
+
+  if (!horarioSalon) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="rounded-3xl bg-white p-8 shadow-xl text-center">
+          <h1 className="text-3xl font-bold text-red-600">
+            Salón no encontrado
+          </h1>
+
+          <p className="mt-3 text-slate-600">
+            El salón "{id}" no existe en el sistema.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const ahora = new Date();
 
   const diaKey = sp.dia
@@ -57,18 +76,14 @@ export default async function SalonPage({
   const horaActual =
     sp.hora ?? obtenerHoraPeru(ahora);
 
-  const bloques = horario3A[diaKey] ?? [];
+  const bloques = horarioSalon[diaKey] ?? [];
 
   const minutosActuales =
     horaAMinutos(horaActual);
 
   const bloqueActual = bloques.find((bloque) => {
-    const inicio = horaAMinutos(
-      bloque.inicio
-    );
-    const fin = horaAMinutos(
-      bloque.fin
-    );
+    const inicio = horaAMinutos(bloque.inicio);
+    const fin = horaAMinutos(bloque.fin);
 
     return (
       minutosActuales >= inicio &&
@@ -76,21 +91,15 @@ export default async function SalonPage({
     );
   });
 
-  const indiceActual = bloques.findIndex(
-    (bloque) => {
-      const inicio = horaAMinutos(
-        bloque.inicio
-      );
-      const fin = horaAMinutos(
-        bloque.fin
-      );
+  const indiceActual = bloques.findIndex((bloque) => {
+    const inicio = horaAMinutos(bloque.inicio);
+    const fin = horaAMinutos(bloque.fin);
 
-      return (
-        minutosActuales >= inicio &&
-        minutosActuales < fin
-      );
-    }
-  );
+    return (
+      minutosActuales >= inicio &&
+      minutosActuales < fin
+    );
+  });
 
   const siguienteBloque =
     indiceActual >= 0
@@ -120,7 +129,7 @@ export default async function SalonPage({
       : "🔵 AUTOESTUDIO";
 
   return (
-    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-slate-100 flex justify-center p-4">
       <div className="w-full max-w-md">
 
         <div className="overflow-hidden rounded-3xl bg-white shadow-xl">
@@ -132,7 +141,7 @@ export default async function SalonPage({
             </p>
 
             <h1 className="mt-2 text-5xl font-bold">
-              {id}
+              {id.toUpperCase()}
             </h1>
 
             <p className="mt-3 text-slate-300">
@@ -176,7 +185,7 @@ export default async function SalonPage({
                 </p>
               </>
             ) : (
-              <div>
+              <>
                 <h2 className="mt-3 text-2xl font-bold text-slate-900">
                   No hay actividad programada
                 </h2>
@@ -184,7 +193,7 @@ export default async function SalonPage({
                 <p className="mt-2 text-slate-500">
                   Fuera del horario escolar
                 </p>
-              </div>
+              </>
             )}
 
             {siguienteBloque && (
@@ -207,12 +216,44 @@ export default async function SalonPage({
                   )}
 
                   <p className="mt-2 text-sm text-slate-500">
-                    {siguienteBloque.inicio} -{" "}
-                    {siguienteBloque.fin}
+                    {siguienteBloque.inicio} - {siguienteBloque.fin}
                   </p>
                 </div>
               </>
             )}
+
+            <div className="my-6 border-t border-slate-200" />
+
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              Horario de hoy
+            </p>
+
+            <div className="mt-3 space-y-2">
+              {bloques.map((bloque, index) => {
+                const activo =
+                  bloqueActual?.inicio === bloque.inicio &&
+                  bloqueActual?.fin === bloque.fin;
+
+                return (
+                  <div
+                    key={index}
+                    className={`rounded-xl p-3 ${
+                      activo
+                        ? "bg-green-100 border border-green-300"
+                        : "bg-slate-50"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">
+                      {bloque.inicio} - {bloque.fin}
+                    </div>
+
+                    <div className="text-sm">
+                      {bloque.titulo}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
           </div>
 

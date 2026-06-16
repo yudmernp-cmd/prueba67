@@ -114,3 +114,6 @@ export const horario3A: Record<string, BloqueHorario[]> = {
     { inicio: "18:10", fin: "18:50", titulo: "ASESORÍA ACADÉMICA", profesor: "AUTOESTUDIO", tipo: "autoestudio" },
   ],
 };
+export const horarios = {
+  "3A": horario3A,
+};
