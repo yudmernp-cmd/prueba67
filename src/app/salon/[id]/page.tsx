@@ -1,4 +1,5 @@
-import { horarios } from "@/lib/horarios";
+import { obtenerHorarioSalon } from "@/lib/googleSheets";
+import RegistroDocente from "@/components/registrodocente";
 
 export const dynamic = "force-dynamic";
 
@@ -48,20 +49,40 @@ export default async function SalonPage({
   const { id } = await params;
   const sp = searchParams ? await searchParams : {};
 
-  const horarioSalon =
-    horarios[id.toUpperCase() as keyof typeof horarios];
+  const horarioSalon = await obtenerHorarioSalon(id.toUpperCase());
 
-  if (!horarioSalon) {
+  if (horarioSalon.length === 0) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-        <div className="rounded-3xl bg-white p-8 shadow-xl text-center">
-          <h1 className="text-3xl font-bold text-red-600">
-            Salón no encontrado
-          </h1>
+      <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.14),_transparent_30%)]" />
+        <div className="absolute left-[-120px] top-[-120px] h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute bottom-[-120px] right-[-120px] h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
 
-          <p className="mt-3 text-slate-600">
-            El salón "{id}" no existe en el sistema.
-          </p>
+        <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-8">
+          <div className="w-full rounded-[2rem] border border-white/10 bg-white/5 p-6 text-center shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300">
+              <span className="h-2 w-2 rounded-full bg-red-400" />
+              SALÓN NO ENCONTRADO
+            </div>
+
+            <h1 className="mt-6 text-4xl font-black tracking-tight">
+              {id.toUpperCase()}
+            </h1>
+
+            <p className="mt-4 text-sm leading-relaxed text-slate-300">
+              El salón <span className="font-semibold text-white">{id}</span>{" "}
+              no existe en el sistema.
+            </p>
+
+            <div className="mt-6 rounded-[1.4rem] border border-white/10 bg-white/5 p-4 text-left">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                Sugerencia
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                Verifica que el ID del salón coincida con el Google Sheets.
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -69,166 +90,179 @@ export default async function SalonPage({
 
   const ahora = new Date();
 
-  const diaKey = sp.dia
-    ? normalizarTexto(sp.dia)
-    : obtenerDiaPeru(ahora);
+  const diaKey = sp.dia ? normalizarTexto(sp.dia) : obtenerDiaPeru(ahora);
 
-  const horaActual =
-    sp.hora ?? obtenerHoraPeru(ahora);
+  const horaActual = sp.hora ?? obtenerHoraPeru(ahora);
 
-  const bloques = horarioSalon[diaKey] ?? [];
+  const bloques = horarioSalon
+    .filter((b) => normalizarTexto(b.dia) === diaKey)
+    .map((b) => ({
+      inicio: b.inicio,
+      fin: b.fin,
+      titulo: b.curso,
+      profesor: b.docente,
+      tipo: b.tipo,
+    }));
 
-  const minutosActuales =
-    horaAMinutos(horaActual);
+  const minutosActuales = horaAMinutos(horaActual);
 
   const bloqueActual = bloques.find((bloque) => {
     const inicio = horaAMinutos(bloque.inicio);
     const fin = horaAMinutos(bloque.fin);
 
-    return (
-      minutosActuales >= inicio &&
-      minutosActuales < fin
-    );
+    return minutosActuales >= inicio && minutosActuales < fin;
   });
 
   const indiceActual = bloques.findIndex((bloque) => {
     const inicio = horaAMinutos(bloque.inicio);
     const fin = horaAMinutos(bloque.fin);
 
-    return (
-      minutosActuales >= inicio &&
-      minutosActuales < fin
-    );
+    return minutosActuales >= inicio && minutosActuales < fin;
   });
 
-  const siguienteBloque =
-    indiceActual >= 0
-      ? bloques[indiceActual + 1]
-      : null;
+  const siguienteBloque = indiceActual >= 0 ? bloques[indiceActual + 1] : null;
 
-  const diaMostrado =
-    diaKey.charAt(0).toUpperCase() +
-    diaKey.slice(1);
+  const diaMostrado = diaKey.charAt(0).toUpperCase() + diaKey.slice(1);
 
   const colorEstado =
     bloqueActual?.tipo === "clase"
-      ? "bg-green-100 text-green-700"
+      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
       : bloqueActual?.tipo === "receso"
-      ? "bg-yellow-100 text-yellow-700"
+      ? "border-amber-400/20 bg-amber-500/10 text-amber-300"
       : bloqueActual?.tipo === "almuerzo"
-      ? "bg-orange-100 text-orange-700"
-      : "bg-blue-100 text-blue-700";
+      ? "border-orange-400/20 bg-orange-500/10 text-orange-300"
+      : "border-sky-400/20 bg-sky-500/10 text-sky-300";
 
   const textoEstado =
     bloqueActual?.tipo === "clase"
-      ? "🟢 CLASE"
+      ? "CLASE"
       : bloqueActual?.tipo === "receso"
-      ? "🟡 RECESO"
+      ? "RECESO"
       : bloqueActual?.tipo === "almuerzo"
-      ? "🟠 ALMUERZO"
-      : "🔵 AUTOESTUDIO";
+      ? "ALMUERZO"
+      : "AUTOESTUDIO";
 
   return (
-    <main className="min-h-screen bg-slate-100 flex justify-center p-4">
-      <div className="w-full max-w-md">
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.14),_transparent_30%)]" />
+      <div className="absolute left-[-120px] top-[-120px] h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="absolute bottom-[-120px] right-[-120px] h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
 
-        <div className="overflow-hidden rounded-3xl bg-white shadow-xl">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-8">
+        <div className="w-full space-y-5">
+          <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium tracking-[0.24em] text-slate-300">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  COAR
+                </div>
 
-          <div className="bg-slate-900 p-6 text-center text-white">
+                <h1 className="mt-5 text-5xl font-black leading-none tracking-tight">
+                  {id.toUpperCase()}
+                </h1>
 
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-300">
-              COAR
-            </p>
+                <p className="mt-3 text-sm text-slate-300">{diaMostrado}</p>
+              </div>
 
-            <h1 className="mt-2 text-5xl font-bold">
-              {id.toUpperCase()}
-            </h1>
-
-            <p className="mt-3 text-slate-300">
-              {diaMostrado}
-            </p>
-
-            <p className="text-3xl font-semibold">
-              {horaActual}
-            </p>
-
-          </div>
-
-          <div className="p-6">
+              <div className="rounded-[1.4rem] border border-white/10 bg-slate-900/70 px-4 py-3 text-right shadow-lg shadow-black/10">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                  Hora actual
+                </p>
+                <p className="mt-1 text-2xl font-bold text-white">{horaActual}</p>
+              </div>
+            </div>
 
             {bloqueActual && (
               <div
-                className={`mb-6 rounded-2xl p-3 text-center font-semibold ${colorEstado}`}
+                className={`mt-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${colorEstado}`}
               >
+                <span className="h-2 w-2 rounded-full bg-current" />
                 {textoEstado}
               </div>
             )}
+          </section>
 
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <section className="rounded-[2rem] border border-white/10 bg-slate-900/80 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               Actividad actual
             </p>
 
             {bloqueActual ? (
-              <>
-                <h2 className="mt-3 text-3xl font-bold text-slate-900">
+              <div className="mt-4 rounded-[1.6rem] border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:bg-white/8">
+                <h2 className="text-3xl font-black tracking-tight text-white">
                   {bloqueActual.titulo}
                 </h2>
 
                 {bloqueActual.profesor && (
-                  <p className="mt-2 text-lg text-slate-600">
+                  <p className="mt-3 text-lg text-slate-300">
                     {bloqueActual.profesor}
                   </p>
                 )}
 
-                <p className="mt-4 text-sm text-slate-500">
+                <p className="mt-4 text-sm text-slate-400">
                   {bloqueActual.inicio} - {bloqueActual.fin}
                 </p>
-              </>
+
+                {bloqueActual && bloqueActual.profesor && (
+                  <div className="mt-6">
+                    <RegistroDocente
+                      salon={id.toUpperCase()}
+                      curso={bloqueActual.titulo}
+                      docente={bloqueActual.profesor}
+                    />
+                  </div>
+                )}
+              </div>
             ) : (
-              <>
-                <h2 className="mt-3 text-2xl font-bold text-slate-900">
+              <div className="mt-4 rounded-[1.6rem] border border-white/10 bg-white/5 p-5">
+                <h2 className="text-2xl font-black tracking-tight text-white">
                   No hay actividad programada
                 </h2>
 
-                <p className="mt-2 text-slate-500">
+                <p className="mt-3 text-sm text-slate-300">
                   Fuera del horario escolar
                 </p>
-              </>
+              </div>
             )}
+          </section>
 
-            {siguienteBloque && (
-              <>
-                <div className="my-6 border-t border-slate-200" />
+          {siguienteBloque && (
+            <section className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Próxima actividad
+              </p>
 
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                  Próxima actividad
-                </p>
+              <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-slate-900/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:bg-slate-900">
+                <h3 className="text-xl font-bold text-white">
+                  {siguienteBloque.titulo}
+                </h3>
 
-                <div className="mt-3 rounded-2xl bg-slate-50 p-4">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    {siguienteBloque.titulo}
-                  </h3>
-
-                  {siguienteBloque.profesor && (
-                    <p className="mt-1 text-slate-600">
-                      {siguienteBloque.profesor}
-                    </p>
-                  )}
-
-                  <p className="mt-2 text-sm text-slate-500">
-                    {siguienteBloque.inicio} - {siguienteBloque.fin}
+                {siguienteBloque.profesor && (
+                  <p className="mt-2 text-sm text-slate-300">
+                    {siguienteBloque.profesor}
                   </p>
-                </div>
-              </>
-            )}
+                )}
 
-            <div className="my-6 border-t border-slate-200" />
+                <p className="mt-3 text-sm text-slate-400">
+                  {siguienteBloque.inicio} - {siguienteBloque.fin}
+                </p>
+              </div>
+            </section>
+          )}
 
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Horario de hoy
-            </p>
+          <section className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Horario de hoy
+              </p>
 
-            <div className="mt-3 space-y-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
+                {bloques.length} bloques
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3">
               {bloques.map((bloque, index) => {
                 const activo =
                   bloqueActual?.inicio === bloque.inicio &&
@@ -237,32 +271,45 @@ export default async function SalonPage({
                 return (
                   <div
                     key={index}
-                    className={`rounded-xl p-3 ${
+                    className={`group flex items-start gap-4 rounded-[1.3rem] border p-4 transition-all duration-300 hover:-translate-y-1 ${
                       activo
-                        ? "bg-green-100 border border-green-300"
-                        : "bg-slate-50"
+                        ? "border-emerald-400/30 bg-emerald-500/10"
+                        : "border-white/10 bg-slate-900/60 hover:bg-slate-900"
                     }`}
                   >
-                    <div className="text-sm font-semibold">
-                      {bloque.inicio} - {bloque.fin}
-                    </div>
+                    <div
+                      className={`mt-1 h-3 w-3 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-110 ${
+                        activo ? "bg-emerald-400" : "bg-slate-500"
+                      }`}
+                    />
 
-                    <div className="text-sm">
-                      {bloque.titulo}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-white">
+                          {bloque.inicio} - {bloque.fin}
+                        </div>
+
+                        {activo && (
+                          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                            Ahora
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-sm leading-relaxed text-slate-300">
+                        {bloque.titulo}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+          </section>
 
+          <div className="text-center text-xs tracking-[0.2em] text-slate-400">
+            Sistema de información mediante QR
           </div>
-
         </div>
-
-        <div className="mt-4 text-center text-sm text-slate-500">
-          Sistema de información mediante QR
-        </div>
-
       </div>
     </main>
   );
