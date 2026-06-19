@@ -1,5 +1,13 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type {
+  Metadata,
+  Viewport,
+} from "next";
+
+import {
+  Geist,
+  Geist_Mono,
+} from "next/font/google";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +22,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "COAR Sistema QR",
-  description: "Registro de asistencia docente",
+  description:
+    "Registro de asistencia docente",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#020617",
 };
 
