@@ -209,7 +209,7 @@ export default async function SalonPage({
                     <RegistroDocente
                       salon={id.toUpperCase()}
                       curso={bloqueActual.titulo}
-                      docente={bloqueActual.profesor}
+                      docentes={bloqueActual.profesor}
                     />
                   </div>
                 )}

@@ -5,14 +5,24 @@ import { useState } from "react";
 type Props = {
   salon: string;
   curso: string;
-  docente: string;
+  docentes: string;
 };
 
 export default function RegistroDocente({
   salon,
   curso,
-  docente,
+  docentes,
 }: Props) {
+  const listaDocentes = docentes
+    .split("/")
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+  const [
+    docenteSeleccionado,
+    setDocenteSeleccionado,
+  ] = useState("");
+
   const [estado, setEstado] =
     useState("");
 
@@ -33,7 +43,20 @@ export default function RegistroDocente({
     >("");
 
   async function guardar() {
+
+    if (!docenteSeleccionado) {
+
+      setTipoMensaje("error");
+
+      setMensaje(
+        "Selecciona un docente."
+      );
+
+      return;
+    }
+
     if (!estado) {
+
       setTipoMensaje("error");
 
       setMensaje(
@@ -48,6 +71,7 @@ export default function RegistroDocente({
     setMensaje("");
 
     try {
+
       const res =
         await fetch(
           "/api/registro",
@@ -60,7 +84,8 @@ export default function RegistroDocente({
             body: JSON.stringify({
               salon,
               curso,
-              docente,
+              docente:
+                docenteSeleccionado,
               estado,
               observacion,
             }),
@@ -71,6 +96,7 @@ export default function RegistroDocente({
         await res.json();
 
       if (data.ok) {
+
         setTipoMensaje(
           "success"
         );
@@ -81,11 +107,14 @@ export default function RegistroDocente({
 
         setEstado("");
         setObservacion("");
+        setDocenteSeleccionado("");
 
         setTimeout(() => {
           setMensaje("");
         }, 4000);
+
       } else {
+
         setTipoMensaje(
           "error"
         );
@@ -93,8 +122,11 @@ export default function RegistroDocente({
         setMensaje(
           "Error al guardar el registro."
         );
+
       }
+
     } catch (error) {
+
       console.error(error);
 
       setTipoMensaje(
@@ -104,6 +136,7 @@ export default function RegistroDocente({
       setMensaje(
         "Error al guardar el registro."
       );
+
     }
 
     setGuardando(false);
@@ -124,7 +157,41 @@ export default function RegistroDocente({
         Registro docente
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <p className="mt-4 text-xs uppercase tracking-[0.25em] text-slate-400">
+        Docente
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+
+        {listaDocentes.map(
+          (docente) => (
+            <button
+              key={docente}
+              type="button"
+              onClick={() =>
+                setDocenteSeleccionado(
+                  docente
+                )
+              }
+              className={`rounded-xl border px-3 py-2 text-sm transition-all duration-200 ${
+                docenteSeleccionado ===
+                docente
+                  ? "border-cyan-400/30 bg-cyan-500/20 text-cyan-200"
+                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              {docente}
+            </button>
+          )
+        )}
+
+      </div>
+
+      <p className="mt-5 text-xs uppercase tracking-[0.25em] text-slate-400">
+        Estado
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
 
         {opciones.map(
           (opcion) => (
